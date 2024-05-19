@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fault Tracker</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        color: #333;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    input[type="date"],
+    input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    button {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #45a049;
+    }
+
+    h2 {
+        color: #333;
+        margin-top: 20px;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        margin-bottom: 10px;
+        background-color: #fff;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    li button {
+        padding: 6px 12px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        float: right;
+    }
+
+    li button:hover {
+        background-color: #d32f2f;
+    }
+</style>
+</head>
+<body>
+<h1>Fault Tracker</h1>
+<label for="dateInput">Date:</label>
+<input type="date" id="dateInput">
+<label for="faultInput">Fault:</label>
+<input type="text" id="faultInput" placeholder="Enter fault description">
+<label for="stationInput">Station:</label>
+<input type="text" id="stationInput" placeholder="Enter station">
+<label for="serialInput">Serial Number:</label>
+<input type="text" id="serialInput" placeholder="Enter serial number">
+<button onclick="addFault()">Add Fault</button>
+<br><br>
+<h2>Saved Faults</h2>
+<input type="text" id="searchInput" oninput="searchFaults()" placeholder="Search faults">
+<ul id="faultList"></ul>
+<button onclick="exportFaults()">Export Faults</button>
+<button onclick="confirmClearFaults()">Clear All Faults</button>
+
+<script>
+function addFault() {
+    var dateInput = document.getElementById("dateInput").value;
+    var faultInput = document.getElementById("faultInput").value;
+    var stationInput = document.getElementById("stationInput").value;
+    var serialInput = document.getElementById("serialInput").value;
+    
+    if (dateInput.trim() !== "" && faultInput.trim() !== "" && stationInput.trim() !== "" && serialInput.trim() !== "") {
+        var fault = {
+            date: `<strong><em>${dateInput}</em></strong>`,
+            description: `<strong><em>${faultInput}</em></strong>`,
+            station: `<strong><em>${stationInput}</em></strong>`,
+            serialNumber: `<strong><em>${serialInput}</em></strong>`
+        };
+        var faults = JSON.parse(localStorage.getItem("faults")) || [];
+        faults.push(fault);
+        localStorage.setItem("faults", JSON.stringify(faults));
+        displayFaults();
+    }
+}
+
+function displayFaults() {
+    var faultList = document.getElementById("faultList");
+    faultList.innerHTML = "";
+    var faults = JSON.parse(localStorage.getItem("faults")) || [];
+    faults.forEach(function(fault, index) {
+        var li = document.createElement("li");
+        li.innerHTML = `Date: ${fault.date}, Fault: ${fault.description}, Station: ${fault.station}, Serial Number: ${fault.serialNumber} <button onclick="confirmDeleteFault(${index})">Delete</button>`;
+        faultList.appendChild(li);
+    });
+}
+
+function exportFaults() {
+    var faults = JSON.parse(localStorage.getItem("faults")) || [];
+    var textContent = "Date, Fault, Station, Serial Number\n";
+    faults.forEach(function(fault) {
+        var date = fault.date.replace(/<\/?[^>]+(>|$)/g, "");
+        var description = fault.description.replace(/<\/?[^>]+(>|$)/g, "");
+        var station = fault.station.replace(/<\/?[^>]+(>|$)/g, "");
+        var serialNumber = fault.serialNumber.replace(/<\/?[^>]+(>|$)/g, "");
+        textContent += `${date}, ${description}, ${station}, ${serialNumber}\n`;
+    });
+    
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(textContent));
+    element.setAttribute('download', 'faults.txt');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+function confirmClearFaults() {
+    var confirmation = confirm("Are you sure you want to clear all faults?");
+    if (confirmation) {
+        clearFaults();
+    }
+}
+
+function clearFaults() {
+    localStorage.removeItem("faults");
+    displayFaults();
+}
+
+function confirmDeleteFault(index) {
+    var confirmation = confirm("Are you sure you want to delete this fault?");
+    if (confirmation) {
+        deleteFault(index);
+    }
+}
+
+function deleteFault(index) {
+    var faults = JSON.parse(localStorage.getItem("faults")) || [];
+    faults.splice(index, 1);
+    localStorage.setItem("faults", JSON.stringify(faults));
+    displayFaults();
+}
+
+function searchFaults() {
+    var searchInput = document.getElementById("searchInput").value.toLowerCase();
+    var faults = JSON.parse(localStorage.getItem("faults")) || [];
+    var filteredFaults = faults.filter(function(fault) {
+        return Object.values(fault).some(value =>
+            typeof value === 'string' && value.toLowerCase().includes(searchInput)
+        );
+    });
+    var faultList = document.getElementById("faultList");
+    faultList.innerHTML = "";
+    filteredFaults.forEach(function(fault, index) {
+        var li = document.createElement("li");
+        li.innerHTML = `Date: ${fault.date}, Fault: ${fault.description}, Station: ${fault.station}, Serial Number: ${fault.serialNumber} <button onclick="confirmDeleteFault(${index})">Delete</button>`;
+        faultList.appendChild(li);
+    });
+}
+
+// Display saved faults on page load
+displayFaults();
+</script>
+</body>
+</html>
